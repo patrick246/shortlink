@@ -1,0 +1,2 @@
+# shortlink
+Go shortlink server
