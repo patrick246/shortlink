@@ -1,0 +1,62 @@
+{{ define "title" }}Overview | Shortlink Admin{{ end }}
+{{ define "main" }}
+    {{ with .Shortlinks}}
+        <h1 class="my-2">Manage Shortlinks</h1>
+        <table class="table my-4">
+            <thead>
+            <tr>
+                <th scope="col">Code</th>
+                <th scope="col">Target</th>
+                <th scope="col">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            {{ range . }}
+                <tr>
+                    <td>{{ .Code }}</td>
+                    <td><a href="{{ .URL }}" target="_blank" rel="nofollow noopener noreferrer">{{ .URL }}</a></td>
+                    <td>
+                        <form action="/admin/shortlinks/{{.Code}}/delete" method="post">
+                            <div class="btn-group btn-group-sm">
+                                <a class="btn btn-sm btn-outline-secondary" href="./shortlinks/{{ .Code }}"><i
+                                            class="bi-pencil"></i></a>
+
+                                <input type="hidden" name="_csrf" value="{{$.CSRF}}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </td>
+                </tr>
+            {{ end }}
+            </tbody>
+        </table>
+        <nav aria-label="table page navigation">
+            {{ $result := pagination $.Page $.Total $.Size }}
+            <ul class="pagination">
+                <li class="page-item {{ if not $result.Prev }}disabled{{ end }}"><a class="page-link" href="?page={{ sub $.Page 1 }}">Prev</a></li>
+
+                {{ range $result.Pages }}
+                <li class="page-item {{ if eq . $.Page}}active{{end}}"><a class="page-link" href="?page={{ . }}">{{ add . 1 }}</a></li>
+                {{ end }}
+
+                <li class="page-item {{ if not $result.Next }}disabled{{ end }}"><a class="page-link" href="?page={{ add $.Page 1 }}">Next</a></li>
+            </ul>
+        </nav>
+    {{ end }}
+    <h2 class="mt-4 mb-3">Create new Shortlink</h2>
+    <form action="/admin/shortlinks" method="post">
+        <input type="hidden" name="_csrf" value="{{ $.CSRF}}">
+        <div class="mb-3">
+            <label for="code" class="form-label">Code</label>
+            <input type="text" id="code" name="code" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label for="destination" class="form-label">Destination</label>
+            <input type="url" id="destination" name="url" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Save</button>
+    </form>
+{{ end }}
+
+{{ template "base" . }}

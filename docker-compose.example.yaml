@@ -1,0 +1,25 @@
+version: '3'
+services:
+  shortlink:
+    image: ghcr.io/patrick246/shortlink:1.0.0
+    command:
+      - --storage.type=local
+      - --storage.local.path=/storage
+      - --auth.type=basic
+      - --auth.basic.user=admin
+      - --auth.basic.password=$$2y$$12$$ipUJQwCRes0DiQRQCCUPt./U.hmgUMzoEjuE60Wd7W.FGiQ6bk71O # admin
+    volumes:
+      - /volumes/shortlink:/storage
+    networks:
+      - traefik_net
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: "traefik_net"
+      traefik.http.routers.shortlink.rule: "Host(`short.example.com`)"
+      traefik.http.routers.shortlink.tls: "true"
+      traefik.http.routers.shortlink.tls.certresolver: "le"
+      traefik.http.services.shortlink.loadbalancer.service.port: "8080"
+
+networks:
+  traefik_net:
+    external: true

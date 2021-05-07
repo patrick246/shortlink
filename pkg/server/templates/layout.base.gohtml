@@ -1,0 +1,22 @@
+{{ define "base" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ block "title" . -}} Shortlink Admin {{- end }}</title>
+    <link rel="stylesheet" href="/static/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-icons.css">
+</head>
+<body>
+<nav class="navbar navbar-dark bg-dark mb-3">
+    <div class="container">
+        <a class="navbar-brand" href="#">Shortlink</a>
+    </div>
+</nav>
+    <div class="container">
+        {{ block "main" . }}
+        {{ end }}
+    </div>
+</body>
+</html>
+{{ end }}

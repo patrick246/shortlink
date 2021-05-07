@@ -1,0 +1,18 @@
+{{ define "title"}} Edit | Shortlink Admin {{ end }}
+{{ define "main" }}
+    <h1>Edit Shortlink</h1>
+    <form action="/admin/shortlinks/{{.Code}}" method="post">
+        <input type="hidden" name="_csrf" value="{{ .CSRF}}">
+        <div class="mb-3">
+            <label for="code" class="form-label">Code</label>
+            <input type="text" id="code" name="code" class="form-control" value="{{ .Code }}">
+        </div>
+        <div class="mb-3">
+            <label for="destination" class="form-label">Destination</label>
+            <input type="url" id="destination" name="url" class="form-control" value="{{ .URL }}">
+        </div>
+        <button type="submit" class="btn btn-primary">Save</button>
+    </form>
+{{ end }}
+
+{{ template "base" . }}
