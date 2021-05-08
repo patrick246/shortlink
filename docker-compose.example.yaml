@@ -1,7 +1,7 @@
 version: '3'
 services:
   shortlink:
-    image: ghcr.io/patrick246/shortlink:1.0.0
+    image: ghcr.io/patrick246/shortlink:1.0.1
     command:
       - --storage.type=local
       - --storage.local.path=/storage
@@ -15,9 +15,15 @@ services:
     labels:
       traefik.enable: "true"
       traefik.docker.network: "traefik_net"
+      traefik.http.routers.shortlink.entrypoints: "web"
       traefik.http.routers.shortlink.rule: "Host(`short.example.com`)"
-      traefik.http.routers.shortlink.tls: "true"
-      traefik.http.routers.shortlink.tls.certresolver: "le"
+      traefik.http.routers.shortlink.middlewares: "shortlink-redirect"
+      traefik.http.middlewares.shortlink-redirect.redirectscheme.scheme: "https"
+      traefik.http.routers.shortlink-secure.entrypoints: "websecure"
+      traefik.http.routers.shortlink-secure.rule: "Host(`short.example.com`)"
+      traefik.http.routers.shortlink-secure.tls: "true"
+      traefik.http.routers.shortlink-secure.tls.certresolver: "le"
+      traefik.http.routers.shortlink-secure.service: "shortlink"
       traefik.http.services.shortlink.loadbalancer.service.port: "8080"
 
 networks:
