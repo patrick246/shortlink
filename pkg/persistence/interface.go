@@ -17,4 +17,5 @@ type Repository interface {
 	SetLinkForCode(ctx context.Context, code, url string) error
 	DeleteCode(ctx context.Context, code string) error
 	GetEntries(ctx context.Context, page, size int64) ([]Shortlink, int64, error)
+	Close() error
 }

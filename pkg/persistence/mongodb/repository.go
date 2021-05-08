@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"time"
 )
 
 type Repository struct {
@@ -95,4 +96,10 @@ func mapToGeneric(in []Shortlink) []persistence.Shortlink {
 		})
 	}
 	return out
+}
+
+func (r *Repository) Close() error {
+	closeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return r.conn.Client.Disconnect(closeCtx)
 }

@@ -53,6 +53,7 @@ func main() {
 	default:
 		log.Fatalw("unknown storage type", "type", *storageType)
 	}
+	defer repo.Close()
 
 	var authMiddleware server.MiddlewareFactory
 	log.Infow("setting up authentication", "type", *authType)
@@ -61,7 +62,7 @@ func main() {
 	case "none":
 		authMiddleware = auth.Noop()
 	case "basic":
-		authMiddleware = auth.BasicAuth(*basicAuthUser, *basicAuthPassword, "/admin/")
+		authMiddleware = auth.BasicAuth(*basicAuthUser, *basicAuthPassword, "/admin/shortlinks")
 	case "oidc":
 		var err error
 		authMiddleware, err = auth.OpenIDConnect(auth.OidcConfig{
@@ -69,7 +70,7 @@ func main() {
 			ClientId:     *oidcClientId,
 			ClientSecret: *oidcClientSecret,
 			RedirectUri:  *oidcRedirectUri,
-		}, "/admin/")
+		}, "/admin/shortlinks")
 		if err != nil {
 			log.Fatalw("oidc error", "issuer", *oidcIssuer, "clientId", *oidcClientId, "redirectUri", *oidcRedirectUri, "error", err)
 		}

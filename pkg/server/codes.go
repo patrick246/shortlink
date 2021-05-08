@@ -2,11 +2,17 @@ package server
 
 import (
 	"github.com/patrick246/shortlink/pkg/persistence"
+	"github.com/prometheus/client_golang/prometheus"
 	"net/http"
 	"regexp"
 )
 
 var codePathRegex = regexp.MustCompile("^/([^/]+)$")
+
+var codeUsageCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+	Name: "shortlink_code_request_count",
+	Help: "Counts the number of requests for a shortcode",
+}, []string{"shortcode"})
 
 func (s *Server) handleCodeRequests(w http.ResponseWriter, r *http.Request) {
 	matches := codePathRegex.FindStringSubmatch(r.URL.Path)
@@ -27,6 +33,6 @@ func (s *Server) handleCodeRequests(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", 500)
 		return
 	}
-
+	codeUsageCounter.WithLabelValues(code).Inc()
 	http.Redirect(w, r, url, http.StatusFound)
 }

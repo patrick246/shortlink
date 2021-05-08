@@ -3,21 +3,35 @@ package badger
 import (
 	"context"
 	"github.com/dgraph-io/badger/v3"
+	"github.com/patrick246/shortlink/pkg/observability/logging"
 	"github.com/patrick246/shortlink/pkg/persistence"
+	"time"
 )
 
 type Repository struct {
-	db *badger.DB
+	db       *badger.DB
+	gcTicker *time.Ticker
 }
 
+var log = logging.CreateLogger("local-storage")
+
 func New(path string) (*Repository, error) {
-	db, err := badger.Open(badger.DefaultOptions(path))
+	db, err := badger.Open(badger.DefaultOptions(path).WithLogger(&badgerLogAdapter{log}))
 	if err != nil {
 		return nil, err
 	}
 
+	ticker := time.NewTicker(5 * time.Minute)
+	go func() {
+		for range ticker.C {
+			for db.RunValueLogGC(0.5) == nil {
+			}
+		}
+	}()
+
 	return &Repository{
-		db: db,
+		db:       db,
+		gcTicker: ticker,
 	}, nil
 }
 
@@ -87,4 +101,9 @@ func (r *Repository) GetEntries(ctx context.Context, page, size int64) ([]persis
 		return nil
 	})
 	return shortlinks, total, err
+}
+
+func (r *Repository) Close() error {
+	r.gcTicker.Stop()
+	return r.db.Close()
 }

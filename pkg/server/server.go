@@ -5,6 +5,8 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/patrick246/shortlink/pkg/observability/logging"
 	"github.com/patrick246/shortlink/pkg/persistence"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
 	"time"
 )
@@ -20,6 +22,10 @@ type Server struct {
 }
 
 type MiddlewareFactory func(next http.Handler) http.Handler
+
+func init() {
+	prometheus.MustRegister(codeUsageCounter)
+}
 
 func New(addr string, repo persistence.Repository, authMiddleware MiddlewareFactory) *Server {
 	router := httprouter.New()
@@ -41,6 +47,7 @@ func New(addr string, repo persistence.Repository, authMiddleware MiddlewareFact
 	router.GET("/admin/shortlinks/:code", server.editShortlink)
 	router.POST("/admin/shortlinks/:code", server.createOrEdit)
 	router.POST("/admin/shortlinks/:code/delete", server.deleteShortlink)
+	router.Handler(http.MethodGet, "/admin/metrics", promhttp.Handler())
 
 	router.NotFound = http.HandlerFunc(server.handleCodeRequests)
 

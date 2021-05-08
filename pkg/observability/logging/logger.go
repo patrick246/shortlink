@@ -9,7 +9,7 @@ import (
 func CreateLogger(module string) *zap.SugaredLogger {
 	encoder := zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig())
 	writerSyncer := os.Stdout
-	levelEnabler := zapcore.DebugLevel
+	levelEnabler := zapcore.InfoLevel
 
 	core := zapcore.NewCore(encoder, writerSyncer, levelEnabler)
 
