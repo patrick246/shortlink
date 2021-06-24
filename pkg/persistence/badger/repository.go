@@ -13,6 +13,11 @@ type Repository struct {
 	gcTicker *time.Ticker
 }
 
+type Shortlink struct {
+	URL string    `json:"url"`
+	TTL time.Time `json:"ttl"`
+}
+
 var log = logging.CreateLogger("local-storage")
 
 func New(path string) (*Repository, error) {
@@ -35,8 +40,8 @@ func New(path string) (*Repository, error) {
 	}, nil
 }
 
-func (r *Repository) GetLinkForCode(ctx context.Context, code string) (string, error) {
-	url := ""
+func (r *Repository) GetEntryForCode(ctx context.Context, code string) (persistence.Shortlink, error) {
+	shortlink := persistence.Shortlink{}
 	err := r.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(code))
 		if err == badger.ErrKeyNotFound {
@@ -45,19 +50,30 @@ func (r *Repository) GetLinkForCode(ctx context.Context, code string) (string, e
 		if err != nil {
 			return err
 		}
+
+		ttl := time.Unix(int64(item.ExpiresAt()), 0)
+
 		val, err := item.ValueCopy(nil)
 		if err != nil {
 			return err
 		}
-		url = string(val)
+		shortlink = persistence.Shortlink{
+			Code: code,
+			URL:  string(val),
+			TTL:  ttl,
+		}
 		return nil
 	})
-	return url, err
+	return shortlink, err
 }
 
-func (r *Repository) SetLinkForCode(ctx context.Context, code, url string) error {
+func (r *Repository) SetEntry(ctx context.Context, shortlink persistence.Shortlink) error {
 	return r.db.Update(func(txn *badger.Txn) error {
-		return txn.Set([]byte(code), []byte(url))
+		entry := badger.NewEntry([]byte(shortlink.Code), []byte(shortlink.URL))
+		if !shortlink.TTL.IsZero() {
+			entry = entry.WithTTL(shortlink.TTL.Sub(time.Now()))
+		}
+		return txn.SetEntry(entry)
 	})
 }
 
@@ -86,13 +102,20 @@ func (r *Repository) GetEntries(ctx context.Context, page, size int64) ([]persis
 			}
 
 			item := it.Item()
+			var ttl time.Time
+			if item.ExpiresAt() != 0 {
+				ttl = time.Unix(int64(item.ExpiresAt()), 0).UTC()
+			}
+
 			url, err := item.ValueCopy(nil)
 			if err != nil {
 				return err
 			}
+
 			sl := persistence.Shortlink{
 				Code: string(item.KeyCopy(nil)),
 				URL:  string(url),
+				TTL:  ttl,
 			}
 			shortlinks = append(shortlinks, sl)
 			i++

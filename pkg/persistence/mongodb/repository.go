@@ -14,19 +14,29 @@ type Repository struct {
 }
 
 type Shortlink struct {
-	ID  string `bson:"_id"`
-	URL string `bson:"url"`
+	ID  string    `bson:"_id"`
+	URL string    `bson:"url"`
+	TTL time.Time `bson:"ttl"`
 }
 
 var codeCollection = "codes"
 
 func New(conn *Connection) (persistence.Repository, error) {
+	_, err := conn.Collection(codeCollection).Indexes().CreateOne(context.Background(), mongo.IndexModel{
+		Keys: bson.D{{
+			"ttl", 1,
+		}},
+		Options: options.Index().SetExpireAfterSeconds(1),
+	})
+	if err != nil {
+		return nil, err
+	}
 	return &Repository{
 		conn: conn,
 	}, nil
 }
 
-func (r *Repository) GetLinkForCode(ctx context.Context, code string) (string, error) {
+func (r *Repository) GetEntryForCode(ctx context.Context, code string) (persistence.Shortlink, error) {
 	query := bson.D{{
 		"_id", code,
 	}}
@@ -35,23 +45,42 @@ func (r *Repository) GetLinkForCode(ctx context.Context, code string) (string, e
 	var entry Shortlink
 	err := sr.Decode(&entry)
 	if err == mongo.ErrNoDocuments {
-		return "", persistence.ErrNotFound
+		return persistence.Shortlink{}, persistence.ErrNotFound
 	} else if err != nil {
-		return "", err
+		return persistence.Shortlink{}, err
 	}
 
-	return entry.URL, nil
+	return persistence.Shortlink{
+		Code: entry.ID,
+		URL:  entry.URL,
+		TTL:  entry.TTL,
+	}, nil
 }
 
-func (r *Repository) SetLinkForCode(ctx context.Context, code, url string) error {
-	entry := bson.D{{
-		"$set", bson.D{{
-			"url", url,
-		}},
-	}}
+func (r *Repository) SetEntry(ctx context.Context, shortlink persistence.Shortlink) error {
+	var entry bson.D
+	if shortlink.TTL.IsZero() {
+		entry = bson.D{{
+			"$set", bson.D{{
+				"url", shortlink.URL,
+			}},
+		}, {
+			"$unset", bson.D{{
+				"ttl", "",
+			}},
+		}}
+	} else {
+		entry = bson.D{{
+			"$set", bson.D{{
+				"url", shortlink.URL,
+			}, {
+				"ttl", shortlink.TTL,
+			}},
+		}}
+	}
 
 	filter := bson.D{{
-		"_id", code,
+		"_id", shortlink.Code,
 	}}
 
 	_, err := r.conn.Collection(codeCollection).UpdateOne(ctx, filter, entry, options.Update().SetUpsert(true))
@@ -93,6 +122,7 @@ func mapToGeneric(in []Shortlink) []persistence.Shortlink {
 		out = append(out, persistence.Shortlink{
 			Code: s.ID,
 			URL:  s.URL,
+			TTL:  s.TTL,
 		})
 	}
 	return out

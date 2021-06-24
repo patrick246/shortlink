@@ -5,6 +5,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"net/http"
 	"regexp"
+	"time"
 )
 
 var codePathRegex = regexp.MustCompile("^/([^/]+)$")
@@ -22,7 +23,7 @@ func (s *Server) handleCodeRequests(w http.ResponseWriter, r *http.Request) {
 	}
 	code := matches[1]
 
-	url, err := s.repo.GetLinkForCode(r.Context(), code)
+	shortLink, err := s.repo.GetEntryForCode(r.Context(), code)
 	if err == persistence.ErrNotFound {
 		log.Warnw("invalid code", "code", code, "ip", r.RemoteAddr)
 		http.Error(w, "Not found", 404)
@@ -33,6 +34,12 @@ func (s *Server) handleCodeRequests(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", 500)
 		return
 	}
+
+	if !shortLink.TTL.IsZero() && shortLink.TTL.Before(time.Now()) {
+		http.Error(w, "Not found", 404)
+		return
+	}
+
 	codeUsageCounter.WithLabelValues(code).Inc()
-	http.Redirect(w, r, url, http.StatusFound)
+	http.Redirect(w, r, shortLink.URL, http.StatusFound)
 }

@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"io/fs"
 	"strings"
+	"time"
 )
 
 //go:embed static/*
@@ -26,6 +27,7 @@ type editTemplateData struct {
 	Code string
 	URL  string
 	CSRF string
+	TTL  time.Time
 }
 
 type pagination struct {
@@ -58,7 +60,7 @@ func init() {
 
 				lastPage := (total-1)/size + 1
 				result.Prev = page != 0
-				result.Next = page != total/size
+				result.Next = page != lastPage-1
 
 				for i := page - 3; i < page+3; i++ {
 					if i < 0 || i >= lastPage {

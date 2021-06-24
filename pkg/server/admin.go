@@ -2,8 +2,10 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/julienschmidt/httprouter"
+	"github.com/patrick246/shortlink/pkg/persistence"
 	"net/http"
 	"strconv"
 	"time"
@@ -47,7 +49,7 @@ func (s *Server) listShortlinks(writer http.ResponseWriter, request *http.Reques
 func (s *Server) editShortlink(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
 	code := params.ByName("code")
 
-	url, err := s.repo.GetLinkForCode(request.Context(), code)
+	entry, err := s.repo.GetEntryForCode(request.Context(), code)
 	if err != nil {
 		http.Error(writer, "Error getting database data", 500)
 		return
@@ -57,8 +59,9 @@ func (s *Server) editShortlink(writer http.ResponseWriter, request *http.Request
 
 	err = templates["edit.page.gohtml"].Execute(writer, editTemplateData{
 		Code: code,
-		URL:  url,
+		URL:  entry.URL,
 		CSRF: csrfToken,
+		TTL:  entry.TTL,
 	})
 	if err != nil {
 		log.Errorw("error rendering page", "url", request.URL.String(), "error", err)
@@ -85,6 +88,32 @@ func (s *Server) createOrEdit(writer http.ResponseWriter, request *http.Request,
 		return
 	}
 
+	formTtlDate := request.Form.Get("ttl-date")
+	if formTtlDate == "" {
+		http.Error(writer, "Missing TTL date part in form data", 400)
+		return
+	}
+
+	formTtlTime := request.Form.Get("ttl-time")
+	if formTtlTime == "" {
+		http.Error(writer, "Missing TTL time part in form data", 400)
+		return
+	}
+
+	formTtlTz := request.Form.Get("ttl-tz")
+	if formTtlTz == "" {
+		formTtlTz = "Z"
+	}
+
+	var formTtl time.Time
+	if formTtlDate != "0001-01-01" || formTtlTime != "00:00:00" {
+		formTtl, err = time.Parse("2006-01-02T15:04:05Z07:00", fmt.Sprintf("%sT%s%s", formTtlDate, formTtlTime, formTtlTz))
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("Error parsing date in form: %v", err), 400)
+			return
+		}
+	}
+
 	existingCode := param.ByName("code")
 
 	if existingCode != formCode && existingCode != "" {
@@ -96,7 +125,11 @@ func (s *Server) createOrEdit(writer http.ResponseWriter, request *http.Request,
 		}
 	}
 
-	err = s.repo.SetLinkForCode(request.Context(), formCode, formUrl)
+	err = s.repo.SetEntry(request.Context(), persistence.Shortlink{
+		Code: formCode,
+		URL:  formUrl,
+		TTL:  formTtl,
+	})
 	if err != nil {
 		log.Errorw("set code error", "code", formCode, "url", formUrl, "error", err)
 		http.Error(writer, "Could not save shortlink", 500)
