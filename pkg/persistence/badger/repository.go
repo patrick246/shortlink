@@ -40,7 +40,7 @@ func New(path string) (*Repository, error) {
 	}, nil
 }
 
-func (r *Repository) GetEntryForCode(ctx context.Context, code string) (persistence.Shortlink, error) {
+func (r *Repository) GetEntryForCode(_ context.Context, code string) (persistence.Shortlink, error) {
 	shortlink := persistence.Shortlink{}
 	err := r.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(code))
@@ -51,7 +51,10 @@ func (r *Repository) GetEntryForCode(ctx context.Context, code string) (persiste
 			return err
 		}
 
-		ttl := time.Unix(int64(item.ExpiresAt()), 0)
+		var ttl time.Time
+		if item.ExpiresAt() != 0 {
+			ttl = time.Unix(int64(item.ExpiresAt()), 0).UTC()
+		}
 
 		val, err := item.ValueCopy(nil)
 		if err != nil {
@@ -67,7 +70,7 @@ func (r *Repository) GetEntryForCode(ctx context.Context, code string) (persiste
 	return shortlink, err
 }
 
-func (r *Repository) SetEntry(ctx context.Context, shortlink persistence.Shortlink) error {
+func (r *Repository) SetEntry(_ context.Context, shortlink persistence.Shortlink) error {
 	return r.db.Update(func(txn *badger.Txn) error {
 		entry := badger.NewEntry([]byte(shortlink.Code), []byte(shortlink.URL))
 		if !shortlink.TTL.IsZero() {
@@ -77,13 +80,13 @@ func (r *Repository) SetEntry(ctx context.Context, shortlink persistence.Shortli
 	})
 }
 
-func (r *Repository) DeleteCode(ctx context.Context, code string) error {
+func (r *Repository) DeleteCode(_ context.Context, code string) error {
 	return r.db.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(code))
 	})
 }
 
-func (r *Repository) GetEntries(ctx context.Context, page, size int64) ([]persistence.Shortlink, int64, error) {
+func (r *Repository) GetEntries(_ context.Context, page, size int64) ([]persistence.Shortlink, int64, error) {
 	var shortlinks []persistence.Shortlink
 	var total int64
 
