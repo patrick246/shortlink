@@ -19,5 +19,6 @@ type Repository interface {
 	SetEntry(ctx context.Context, shortlink Shortlink) error
 	DeleteCode(ctx context.Context, code string) error
 	GetEntries(ctx context.Context, page, size int64) ([]Shortlink, int64, error)
+	Migrate(ctx context.Context) error
 	Close() error
 }

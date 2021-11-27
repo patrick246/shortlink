@@ -42,6 +42,11 @@ func main() {
 	}
 	defer repo.Close()
 
+	err := repo.Migrate(context.Background())
+	if err != nil {
+		log.Fatalw("migration error", "error", err)
+	}
+
 	var authMiddleware server.MiddlewareFactory
 	log.Infow("setting up authentication", "type", conf.AuthType)
 
@@ -73,7 +78,7 @@ func main() {
 	}()
 
 	shortlinkServer := server.New(conf.ListenAddr, repo, authMiddleware)
-	err := shortlinkServer.ListenAndServe(runCtx)
+	err = shortlinkServer.ListenAndServe(runCtx)
 	if err != nil {
 		log.Fatalw("server error", "addr", conf.ListenAddr, "error", err)
 	}

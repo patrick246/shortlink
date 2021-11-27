@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/julienschmidt/httprouter"
 	"github.com/patrick246/shortlink/pkg/persistence"
+	"github.com/patrick246/shortlink/pkg/vars"
 	"net/http"
 	"strconv"
 	"time"
@@ -79,6 +80,12 @@ func (s *Server) createOrEdit(writer http.ResponseWriter, request *http.Request,
 	formCode := request.Form.Get("code")
 	if formCode == "" {
 		http.Error(writer, "Missing code in form data", 400)
+		return
+	}
+
+	if !vars.ValidCodePattern.MatchString(formCode) {
+		allowedCharacters := vars.ValidCodePattern.String()[2 : len(vars.ValidCodePattern.String())-3]
+		http.Error(writer, "Code contains invalid characters. Allowed characters are "+allowedCharacters, 400)
 		return
 	}
 

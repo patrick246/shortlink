@@ -5,6 +5,7 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"github.com/patrick246/shortlink/pkg/observability/logging"
 	"github.com/patrick246/shortlink/pkg/persistence"
+	"github.com/patrick246/shortlink/pkg/vars"
 	"time"
 )
 
@@ -127,6 +128,34 @@ func (r *Repository) GetEntries(_ context.Context, page, size int64) ([]persiste
 		return nil
 	})
 	return shortlinks, total, err
+}
+
+func (r *Repository) Migrate(_ context.Context) error {
+	err := r.db.Update(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = true
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			if !vars.ValidCodePattern.Match(item.Key()) {
+				dest, err := item.ValueCopy(nil)
+				if err != nil {
+					log.Errorw("error reading old code data", "error", err)
+				}
+				log.Infow("deleting invalid data", "reason", "migration", "code", string(item.KeyCopy(nil)), "dest", string(dest))
+				err = txn.Delete(item.KeyCopy(nil))
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *Repository) Close() error {

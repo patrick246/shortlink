@@ -1,7 +1,7 @@
 version: '3'
 services:
   shortlink:
-    image: ghcr.io/patrick246/shortlink:1.1.1
+    image: ghcr.io/patrick246/shortlink:1.1.2
     command:
       - --storage.type=local
       - --storage.local.path=/storage

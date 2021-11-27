@@ -3,6 +3,7 @@ package mongodb
 import (
 	"context"
 	"github.com/patrick246/shortlink/pkg/persistence"
+	"github.com/patrick246/shortlink/pkg/vars"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -114,6 +115,31 @@ func (r *Repository) DeleteCode(ctx context.Context, code string) error {
 		return nil
 	}
 	return err
+}
+
+func (r *Repository) Migrate(ctx context.Context) error {
+	cur, err := r.conn.Collection(codeCollection).Find(ctx, bson.D{})
+	if err != nil {
+		return err
+	}
+	defer cur.Close(ctx)
+
+	for cur.Next(ctx) {
+		var doc Shortlink
+		err = cur.Decode(&doc)
+		if err != nil {
+			return err
+		}
+
+		if !vars.ValidCodePattern.MatchString(doc.ID) {
+			log.Infow("deleting invalid data", "reason", "migration", "code", doc.ID, "dest", doc.URL)
+			_, err = r.conn.Collection(codeCollection).DeleteOne(ctx, bson.D{{"_id", doc.ID}})
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func mapToGeneric(in []Shortlink) []persistence.Shortlink {

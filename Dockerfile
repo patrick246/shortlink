@@ -9,9 +9,10 @@ COPY . .
 
 RUN mkdir ./bin && go build -o ./bin -ldflags="-extldflags=-static" -tags osusergo,netgo -trimpath ./cmd/...
 
-FROM gcr.io/distroless/static
+FROM gcr.io/distroless/static:nonroot
 LABEL org.opencontainers.image.source=https://github.com/patrick246/shortlink
 LABEL org.opencontainers.image.authors=patrick246
 LABEL org.opencontainers.image.licenses=AGPL-3.0
 COPY --from=builder /app/bin/shortlink /shortlink
+USER nonroot
 ENTRYPOINT ["/shortlink"]
