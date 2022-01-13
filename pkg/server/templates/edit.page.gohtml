@@ -16,7 +16,7 @@
             <div class="d-flex flex-row" id="ttl">
                 <input type="date" id="ttl-date" name="ttl-date" class="form-control me-2"
                        value="{{ .TTL.Format "2006-01-02" }}" aria-label="TTL Date component">
-                <input type="time" id="ttl-time" name="ttl-time" class="form-control ms-2"
+                <input type="time" id="ttl-time" name="ttl-time" class="form-control ms-2" step="1"
                        value="{{ .TTL.Format "15:04:05" }}" aria-label="TTL Time component">
                 <input type="hidden" id="ttl-tz" name="ttl-tz">
                 <script>
